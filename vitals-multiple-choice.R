@@ -400,12 +400,11 @@ vitals::vitals_log_dir_set("./logs")
 all_models <- c(vllm_models, ollama_models, openrouter_models)
 results_list <- list()
 
-for (model_name in openrouter_models) {
+for (model_name in all_models) {
     cat(rep('#', 40), '\n')
     cat(rep('#', 40), '\n')
     cat(rep('-', 40), '\n')
-    # provider <- ifelse(model_name %in% vllm_models, 'vllm', 'ollama')
-    provider <- 'openrouter'
+    provider <- ifelse(model_name %in% vllm_models, 'vllm', 'ollama')
     
     for (prompt_obj in purrr::transpose(as.list(system_prompts))) {
         prompt_name <- prompt_obj$name
@@ -444,7 +443,7 @@ for (model_name in openrouter_models) {
     }
 }
 
-# save(results_list, file = 'output/logic-mc.RData')
+save(results_list, file = 'output/logic-mc-20251114.RData')
 
 results_list_current <- results_list
 load('output/logic-mc.RData')
