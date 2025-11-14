@@ -38,7 +38,7 @@ analyze_linguistic <- function(chat_base, tweet) {
 }
 
 ## 1.2. Специалист по предметной области ----
-analyze_domain <- function(chat_base, tweet, target, role = "social commentator") {
+analyze_domain <- function(chat_base, tweet, target, role = 'социолог') {
     chat <- chat_base$clone()
     
     prompt <- interpolate(
@@ -100,8 +100,8 @@ determine_stance <- function(chat_base, tweet, target, debate_results) {
     # 1. Определение схемы структурированного вывода
     # Используем type_enum для ограничения ответа только тремя допустимыми значениями
     stance_type <- type_enum(
-        values = c('За', 'Против', 'Нейтрально'),
-        description = "Окончательно определённая позиция автора по отношению к цели."
+        values = c('Favour', 'Against', 'Neutral'),
+        description = "Окончательно определённая позиция автора по отношению к цели: За (Favour), Против (Against) или Нейтрально (Neutral)."
     )
     
     # 2. Подготовка промпта
@@ -113,9 +113,7 @@ determine_stance <- function(chat_base, tweet, target, debate_results) {
     
     Аргументы 'За': {{FavorResponse}}
     Аргументы 'Против': {{AgainstResponse}}
-    Аргументы 'Нейтрально': {{NeutralResponse}}
-    
-    Предоставьте окончательную позицию как одно значение в соответствии с требуемой схемой.",
+    Аргументы 'Нейтрально': {{NeutralResponse}}",
         tweet = tweet,
         target = target,
         FavorResponse = FavorResponse,
@@ -129,13 +127,20 @@ determine_stance <- function(chat_base, tweet, target, debate_results) {
         type = stance_type
     )
     
+    print(final_stance)
+    
     # Поскольку мы запросили single enum, final_stance будет вектором R с одним из значений: 
     # 'Favor', 'Against', или 'Neutral'. Дополнительная обработка не требуется.
     return(final_stance)
 }
 
 # Общая функция-обертка COLA ----
-cola_single_detection <- function(chat_base, tweet, target, domain_role = "social commentator") {
+cola_single_detection <- function(
+        chat_base,
+        tweet,
+        target,
+        domain_role = 'социолог'
+) {
     
     cat(paste0("--- Анализ текста для цели '", target, "' ---\n"))
     cat(paste0("Текст: ", tweet, "\n\n"))
@@ -189,7 +194,11 @@ cola_single_detection <- function(chat_base, tweet, target, domain_role = "socia
 }
 
 # Функция для обработки нескольких текстов ----
-cola_batch_detection <- function(chat_base, data_list, domain_role = "social commentator") {
+cola_batch_detection <- function(
+        chat_base,
+        data_list,
+        domain_role = 'социолог'
+) {
     
     results <- lapply(data_list, function(item) {
         cola_single_detection(
