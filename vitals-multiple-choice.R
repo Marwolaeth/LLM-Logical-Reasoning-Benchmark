@@ -36,7 +36,7 @@ selected_models <- c(
     'llama3.2',
     'Osmosis/Osmosis-Structure-0.6B',
     'wizard-math',
-    'vanta-research/apollo-v1-7b',
+    # 'vanta-research/apollo-v1-7b',
     'granite3.1-moe:3b'
 )
 
@@ -337,18 +337,25 @@ model_logic_test <- function(
         api_key <- NULL
     }
     
+    base_url <- switch(
+        provider,
+        ollama = Sys.getenv('OLLAMA_BASE_URL', 'http://localhost:11434'),
+        openrouter = NULL,
+        vllm = VLLM_BASE
+    )
+    
     ## Создадим объект типа `Chat` с соответствующей моделью и
     ### нашим заранее заготовленным системным промптом
     cht <- ellmer::chat(
         name = paste(provider, model_name, sep = '/'),
-        if (provider == 'vllm') base_url = VLLM_BASE,
+        if (!is.null(base_url)) base_url = base_url,
         system_prompt = system_prompt,
         api_args = list(temperature = 0),
         credentials = api_key,
         echo = 'all'
     )
     
-    cat(paste0("Оценка модели: ", model_name, "\n"))
+    # cat(paste0("Оценка модели: ", model_name, "\n"))
     
     ## Задаем осмысленное имя задаче с учетомтого, что наш набор данных и
     ### инструкции — про логику
@@ -388,6 +395,13 @@ test <- model_logic_test(
     dataset = df
 )
 
+test <- model_logic_test(
+    model = 'vanta-research/apollo-v1-7b',
+    provider = 'ollama',
+    system_prompt = system_prompts[['prompt']][[2]],
+    dataset = df
+)
+
 test
 .last_task$view()
 mean(test$get_samples()$result == test$get_samples()$target)
@@ -402,21 +416,21 @@ results_list <- list()
 
 for (model_name in all_models) {
     cat(rep('#', 40), '\n')
-    cat(rep('#', 40), '\n')
-    cat(rep('-', 40), '\n')
+    # cat(rep('#', 40), '\n')
+    # cat(rep('-', 40), '\n')
     provider <- ifelse(model_name %in% vllm_models, 'vllm', 'ollama')
     
     for (prompt_obj in purrr::transpose(as.list(system_prompts))) {
         prompt_name <- prompt_obj$name
-        
-        cat('Инструкция: ', prompt_name, '\n')
-        cat(rep('-', 40), '\n')
         
         ## Проверим, нет ли уже (вдруг) такого теста
         task_id <- glue::glue('{model_name}-{prompt_name}')
         if (!is.null(results_list[[task_id]])) next
         
         cat(rep('-', 40), '\n')
+        cat('Модель: ', model_name, '\n')
+        cat('Инструкция: ', prompt_name, '\n')
+        # cat(rep('-', 40), '\n')
         
         ## Запустим оценку и замерим время
         tictoc::tic()
@@ -437,16 +451,31 @@ for (model_name in all_models) {
         evaluation_results[['time']] <- (stopwatch$toc - stopwatch$tic)
         evaluation_results[['prompt_type']] <- prompt_name
         
+        # Диагностика
+        cat(
+            'Готово! Точность: ',
+            format(evaluation_results$metrics, digits = 4, nsmall = 2),
+            '%\n\n'
+        )
+        
+        wrong_answers <- which(evaluation_results$get_samples()$score == 'I')
+        if (!length(wrong_answers)) {
+            wrong_answers_str <- 'нет'
+        } else {
+            wrong_answers_str <- paste(wrong_answers, collapse = ', ')
+        }
+        cat('Неправильные ответы: ', wrong_answers_str, '\n\n\n')
+        
         # Добавляем результаты в список
         results_list[[task_id]] <- evaluation_results
-        save(results_list, file = 'output/logic-mc-openrouter.RData')
+        save(results_list, file = 'output/logic-mc-20251114.RData')
     }
 }
 
 save(results_list, file = 'output/logic-mc-20251114.RData')
 
 results_list_current <- results_list
-load('output/logic-mc.RData')
+load('output/logic-mc-20251114.RData')
 
 results_list <- c(results_list, results_list_current)
 
